@@ -1,0 +1,27 @@
+# 依赖与构建产物
+node_modules/
+.vercel/
+dist/
+build/
+
+# 环境变量 / 任何可能含密钥的文件 —— 绝不提交
+.env
+.env.*
+*.key
+*.pem
+secrets.*
+*apikey*
+*api-key*
+
+# 用户本地导出的学习数据备份（不应进仓库）
+*.json
+!vercel.json
+雅思口语*.csv
+雅思口语*.json
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

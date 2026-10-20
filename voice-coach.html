@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>语音陪练 · 千问 BYOK · 雅思口语</title>
+<meta name="description" content="自带千问API Key的英语口语语音陪练：浏览器录音转文字、朗读回复，Key只存本地，不进仓库。">
+<style>
+:root{--bg:#f4f5ef;--paper:#fffefb;--ink:#172f32;--muted:#586b6b;--line:#dce2d8;--green:#235f50;--soft:#e8efdf;--lime:#d5edb1;--warn:#fff2dc;--red:#963e32;--radius:16px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:9px;background:var(--paper);padding:9px 15px;color:var(--ink)}
+button:hover{border-color:var(--green);background:var(--soft)}button.primary{background:var(--green);border-color:var(--green);color:#fff}button:disabled{opacity:.5;cursor:not-allowed}
+button.small{padding:5px 11px;font-size:13px}input,select,textarea{background:#fff;border:1px solid #bdc9c0;padding:9px 11px;border-radius:8px;width:100%;color:var(--ink)}textarea{min-height:70px;resize:vertical}
+a{color:var(--green)}h1{font-size:27px;letter-spacing:-1px;margin:0 0 6px}h2{font-size:18px;margin:0 0 10px}h3{font-size:15px;margin:0 0 8px}p{margin:0 0 11px}
+.wrap{max-width:1080px;margin:auto;padding:26px 20px 70px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--green);font-size:12px;font-weight:650}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.grid{display:grid;gap:16px}.cols2{grid-template-columns:1.1fr 1fr}
+.field{margin-bottom:12px}.field>span{font-size:13px;font-weight:600;display:block;margin-bottom:5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.notice{padding:12px 15px;border-radius:10px;border-left:3px solid #c09c57;background:var(--warn);font-size:13px;margin:12px 0}
+.notice.green{background:var(--soft);border-color:var(--green)}.notice.bad{background:#fae8e4;border-color:var(--red)}
+.chat{display:flex;flex-direction:column;gap:11px;max-height:52vh;overflow:auto;padding:4px}
+.msg{padding:11px 14px;border-radius:13px;max-width:85%;white-space:pre-wrap;font-size:14px}
+.msg.you{align-self:flex-end;background:var(--green);color:#fff;border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:#eef3e9;border-bottom-left-radius:4px}
+.msg.sys{align-self:center;background:transparent;color:var(--muted);font-size:12px;text-align:center;max-width:100%}
+.msg .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px solid #ffffff55;font-size:13px}
+.en{font-family:Georgia,"Times New Roman",serif}
+.dot{width:9px;height:9px;border-radius:50%;background:#bbb;display:inline-block;margin-right:6px;vertical-align:middle}.dot.on{background:var(--green)}.dot.rec{background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.mic{width:70px;height:70px;border-radius:50%;font-size:26px;padding:0;border:2px solid var(--green);background:var(--paper)}.mic.live{background:var(--red);border-color:var(--red);color:#fff;animation:pulse 1.2s infinite}
+.tiny{font-size:12px;color:var(--muted)}.muted{color:var(--muted)}
+summary{cursor:pointer;font-weight:600}details{border:1px solid var(--line);border-radius:11px;padding:12px 15px;margin-top:12px}
+.statusline{font-size:12px;color:var(--muted);min-height:18px;margin-top:8px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:11px;max-width:360px;z-index:10}
+.hidden{display:none!important}:focus-visible{outline:3px solid #ab842a;outline-offset:2px}
+@media(max-width:820px){.cols2{grid-template-columns:1fr}.chat{max-height:46vh}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><span class="badge">BYOK · Key只存本地</span><h1 style="margin-top:9px">语音陪练 · 千问接入</h1></div><a href="index.html" class="badge" style="text-decoration:none">← 返回学习工作台</a></div>
+
+<div class="notice bad" id="secWarn"><b>关于你的 API Key:</b>本页采用 BYOK(自带 Key)。Key 只保存在<b>你当前浏览器</b>的 localStorage,仅在你发起对话时通过 HTTPS 发给<b>你自己部署</b>的中转函数,再转发给千问。<b>Key 不会写进网页源码、不会上传到 GitHub 仓库、不会发给第三方。</b>请勿在公用电脑上保存 Key;用完可点"清除 Key"。</div>
+
+<div class="grid cols2">
+<div class="card">
+<h2>1 · 连接设置</h2>
+<div class="field"><span>千问 API Key(你自己的,存本地)</span><div class="row"><input type="password" id="apiKey" placeholder="sk-... 粘贴后点保存" autocomplete="off"><button id="saveKey" class="small primary">保存</button><button id="clearKey" class="small">清除</button></div></div>
+<div class="field"><span>中转接口地址(Proxy URL)</span><input type="text" id="proxyUrl" placeholder="/api/chat 或 https://你的项目.vercel.app/api/chat"></div>
+<div class="field"><span>模型</span><select id="model"><option value="qwen-plus">qwen-plus(均衡,推荐)</option><option value="qwen-turbo">qwen-turbo(更快更省)</option><option value="qwen-max">qwen-max(更强,更贵)</option></select></div>
+<div class="row"><label class="tiny"><input type="checkbox" id="autoSpeak" checked style="width:auto"> 自动朗读回复</label><label class="tiny"><input type="checkbox" id="autoSend" checked style="width:auto"> 说完自动发送</label></div>
+<button id="testBtn" class="small" style="margin-top:12px">测试连接</button>
+<div class="statusline" id="connStatus" aria-live="polite"></div>
+<p class="tiny" style="margin-top:10px"><span class="dot" id="keyDot"></span>Key <span id="keyState">未设置</span> · <span class="dot" id="srDot"></span>语音识别 <span id="srState">检测中</span></p>
+</div>
+<div class="card">
+<h2>2 · 陪练设置</h2>
+<div class="field"><span>你现在的阶段(影响追问难度)</span><select id="stage"><option value="1">第1—3月 · 基础句子,允许先说3个短句</option><option value="2">第4—6月 · 展开答案,讲清经历</option><option value="3">第7—9月 · 陌生话题,观点讨论</option><option value="4">第10—12月 · 稳定模考,接近考场</option></select></div>
+<div class="field"><span>话题(可留空,让陪练自选)</span><input type="text" id="topic" placeholder="如 work / daily routine / a place you like"></div>
+<div class="row"><button id="startBtn" class="primary">开始新一轮陪练</button><button id="clearChat" class="small">清空对话</button></div>
+<details><summary class="tiny">陪练规则(系统提示,可展开查看)</summary><p class="tiny" id="sysView" style="margin-top:8px"></p></details>
+<p class="tiny muted" style="margin-top:10px">口语本质是"说"。本工具用浏览器语音识别把你的话转成文字再发给千问,它看不到真实发音,<b>不会、也不应据此给雅思口语分</b>。发音和最终评分请找熟悉雅思标准的老师。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>3 · 对话</h2>
+<div class="chat" id="chat" aria-live="polite"><div class="msg sys">设置好 Key 和中转地址后,点"开始新一轮陪练"。</div></div>
+<div style="margin-top:14px" class="row">
+<button class="mic" id="micBtn" title="按一下开始/停止说话" aria-label="录音">🎤</button>
+<div style="flex:1;min-width:220px"><textarea id="textInput" placeholder="语音会转成文字出现在这里;也可直接打字。回车发送,Shift+回车换行。"></textarea></div>
+<button id="sendBtn" class="primary">发送</button>
+</div>
+<div class="row" style="margin-top:8px"><button id="stopSpeak" class="small">停止朗读</button><span class="statusline" id="chatStatus" aria-live="polite"></span></div>
+</div>
+
+<details><summary>部署与计费说明</summary>
+<p class="tiny" style="margin-top:10px">· 本页 + 中转函数部署在你自己的 Vercel(连同你的 GitHub 仓库)。详见仓库里的 <code>README.md</code>。<br>· 中转函数只转发请求,<b>不保存你的 Key</b>;Key 每次由浏览器随请求发送。<br>· 调用千问会按阿里云百炼的实际用量计费,额度和价格以你的百炼控制台为准。建议在控制台设用量上限。<br>· 语音识别/朗读用浏览器自带的 Web Speech API,在 Chrome / Edge 支持最好;Safari、Firefox 可能不支持识别,此时请直接打字。<br>· 识别需要 HTTPS;Vercel 和 GitHub Pages 均为 HTTPS,本地直接打开 <code>file://</code> 可能无法录音。</p>
+</details>
+</div>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+<noscript><p style="padding:20px">本页需要启用 JavaScript。</p></noscript>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const LS={key:'qwen-byok-key',proxy:'qwen-byok-proxy',model:'qwen-byok-model'};
+let history=[],speaking=false,recog=null,recognizing=false,busy=false;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),4000)}
+function sysPrompt(){
+ const stage=$('stage').value,topic=$('topic').value.trim();
+ const stageText={'1':'The learner is a beginner (around IELTS 3.5) with weak grammar. Ask ONE simple everyday question at a time. Allow very short answers (about three short sentences). Keep your own English simple.','2':'Pre-intermediate. Ask one everyday question, then follow up asking for a reason and a real example.','3':'Intermediate, moving to abstract topics. Ask Part 3 style opinion questions and follow up with why/how, comparisons, or examples.','4':'Upper stage, near exam. Simulate a realistic IELTS speaking flow and ask natural follow-ups across parts.'}[stage];
+ return 'You are a patient English speaking partner for a working adult preparing for IELTS Speaking band 6.5. '+stageText+' Rules: (1) Ask only ONE question per turn and wait; never answer for the learner. (2) After each learner reply, point out at most ONE grammar error and ONE unnatural word choice that most affect understanding, explain briefly in Chinese, keep the learner\u2019s original meaning, and give a natural, not over-advanced correction. (3) Then ask the learner to say it again or ask a follow-up to check transfer. (4) You only receive a speech-to-text transcript, so NEVER claim to hear pronunciation and NEVER give an IELTS band score. (5) Keep replies short and speakable. '+(topic?('Start with the topic: '+topic+'.'):'Pick a simple everyday topic to start.')+' Put any Chinese feedback on a new line starting with \u300c\u70b9\u8bc4:\u300d.';
+}
+function renderSys(){$('sysView').textContent=sysPrompt()}
+['stage','topic'].forEach(id=>$(id).addEventListener('input',renderSys));
+function loadCfg(){$('apiKey').value=localStorage.getItem(LS.key)||'';$('proxyUrl').value=localStorage.getItem(LS.proxy)||'/api/chat';$('model').value=localStorage.getItem(LS.model)||'qwen-plus';refreshKeyState()}
+function refreshKeyState(){const has=!!(localStorage.getItem(LS.key));$('keyState').textContent=has?'已保存(本地)':'未设置';$('keyDot').classList.toggle('on',has)}
+$('saveKey').onclick=()=>{const k=$('apiKey').value.trim();if(!k){toast('请先粘贴 Key');return}localStorage.setItem(LS.key,k);refreshKeyState();toast('Key 已保存到本浏览器')};
+$('clearKey').onclick=()=>{localStorage.removeItem(LS.key);$('apiKey').value='';refreshKeyState();toast('已清除本地 Key')};
+$('proxyUrl').addEventListener('change',()=>localStorage.setItem(LS.proxy,$('proxyUrl').value.trim()));
+$('model').addEventListener('change',()=>localStorage.setItem(LS.model,$('model').value));
+function addMsg(role,text){const el=document.createElement('div');el.className='msg '+role;const parts=text.split(/\n(?=\u300c\u70b9\u8bc4:\u300d)/);el.innerHTML='<span class="en">'+esc(parts[0])+'</span>'+(parts[1]?'<span class="fix">'+esc(parts[1])+'</span>':'');$('chat').appendChild(el);$('chat').scrollTop=$('chat').scrollHeight;return el}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+async function callQwen(){
+ const key=localStorage.getItem(LS.key),proxy=($('proxyUrl').value.trim()||'/api/chat');
+ if(!key){toast('请先保存 API Key');return null}
+ busy=true;$('sendBtn').disabled=true;$('chatStatus').textContent='千问思考中…';
+ try{
+  const res=await fetch(proxy,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify({model:$('model').value,messages:[{role:'system',content:sysPrompt()},...history],temperature:0.6})});
+  const raw=await res.text();let data;try{data=JSON.parse(raw)}catch(e){throw new Error('返回非JSON(HTTP '+res.status+'):'+raw.slice(0,180))}
+  if(!res.ok)throw new Error((data.error&&(data.error.message||data.error))||('HTTP '+res.status));
+  const reply=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
+  if(!reply)throw new Error('未取得回复内容');return reply;
+ }catch(e){$('chatStatus').textContent='';addMsg('sys','请求失败:'+e.message+'(检查 Key、中转地址、百炼额度与网络)');return null}
+ finally{busy=false;$('sendBtn').disabled=false}
+}
+async function send(text){
+ text=(text||$('textInput').value).trim();if(!text||busy)return;
+ addMsg('you',text);history.push({role:'user',content:text});$('textInput').value='';
+ const reply=await callQwen();if(reply===null){history.pop();return}
+ history.push({role:'assistant',content:reply});addMsg('ai',reply);$('chatStatus').textContent='';
+ if($('autoSpeak').checked)speak(reply.split(/\n(?=\u300c\u70b9\u8bc4:\u300d)/)[0]);
+}
+async function startRound(){
+ if(!localStorage.getItem(LS.key)){toast('请先保存 API Key');return}
+ history=[];$('chat').innerHTML='';addMsg('sys','陪练开始。用麦克风说话,或直接打字。');
+ history.push({role:'user',content:'Let\u2019s begin. Please ask me your first question.'});
+ const reply=await callQwen();if(reply===null){return}
+ history.push({role:'assistant',content:reply});addMsg('ai',reply);if($('autoSpeak').checked)speak(reply.split(/\n(?=\u300c\u70b9\u8bc4:\u300d)/)[0]);
+}
+function speak(t){try{if(!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=0.95;speaking=true;u.onend=()=>speaking=false;speechSynthesis.speak(u)}catch(e){}}
+$('stopSpeak').onclick=()=>{if(window.speechSynthesis)speechSynthesis.cancel();speaking=false};
+// Web Speech 识别
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){$('srState').textContent='可用';$('srDot').classList.add('on');recog=new SR();recog.lang='en-US';recog.interimResults=true;recog.continuous=false;
+ let finalText='';
+ recog.onresult=e=>{let interim='';finalText='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript;else interim+=r[0].transcript}$('textInput').value=(finalText+interim).trim()};
+ recog.onerror=e=>{$('chatStatus').textContent='识别错误:'+e.error+(e.error==='not-allowed'?'(需允许麦克风且用HTTPS)':'');stopRec()};
+ recog.onend=()=>{recognizing=false;$('micBtn').classList.remove('live');if(finalText.trim()&&$('autoSend').checked)send();};
+}else{$('srState').textContent='此浏览器不支持,请打字';$('micBtn').disabled=true;$('micBtn').title='浏览器不支持语音识别'}
+function stopRec(){if(recog&&recognizing){try{recog.stop()}catch(e){}}recognizing=false;$('micBtn').classList.remove('live')}
+$('micBtn').onclick=()=>{if(!recog)return;if(recognizing){stopRec();return}try{$('textInput').value='';recog.start();recognizing=true;$('micBtn').classList.add('live');$('chatStatus').textContent='正在听…再点一下停止'}catch(e){toast('无法开始录音:'+e.message)}};
+$('sendBtn').onclick=()=>send();
+$('textInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+$('startBtn').onclick=startRound;$('clearChat').onclick=()=>{history=[];$('chat').innerHTML='<div class="msg sys">已清空。</div>';if(window.speechSynthesis)speechSynthesis.cancel()};
+$('testBtn').onclick=async()=>{const key=localStorage.getItem(LS.key),proxy=$('proxyUrl').value.trim()||'/api/chat';if(!key){$('connStatus').textContent='请先保存 Key';return}$('connStatus').textContent='测试中…';try{const r=await fetch(proxy,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key},body:JSON.stringify({model:$('model').value,messages:[{role:'user',content:'Say OK.'}]})});const raw=await r.text();let d;try{d=JSON.parse(raw)}catch(e){throw new Error('返回非JSON(HTTP '+r.status+'):'+raw.slice(0,160))}if(!r.ok)throw new Error((d.error&&(d.error.message||d.error))||('HTTP '+r.status));$('connStatus').textContent='连接成功 ✓ 模型已响应'}catch(e){$('connStatus').textContent='连接失败:'+e.message}};
+loadCfg();renderSys();
+</script>
+</body>
+</html>
